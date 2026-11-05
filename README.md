@@ -125,30 +125,20 @@ const supabaseAnonKey = 'SUA_ANON_PUBLIC_KEY';
 
 Importante: nunca coloque `service_role key` no aplicativo. Use apenas a `anon public key`.
 
-Rode o SQL recomendado para criar o perfil em `usuarios` e configurar as politicas RLS:
+Crie as tabelas e politicas RLS executando a migration abaixo no SQL Editor de um projeto Supabase vazio:
 
 ```text
-docs/supabase-auth-setup.md
+supabase/migrations/20261105160000_auth_and_parishes.sql
 ```
 
-## Tabelas esperadas
+Veja [docs/supabase-auth-setup.md](docs/supabase-auth-setup.md) para criar o projeto, configurar confirmacao de e-mail e inserir uma paroquia de teste.
 
-O app espera que estas tabelas existam no Supabase:
+## Escopo atual do Supabase
 
 - `usuarios`
 - `paroquias`
-- `turmas`
-- `aulas`
-- `atividades`
-- `comunicados`
-- `pagamentos`
-- `progresso`
-- `respostas_atividades`
 
-Para o fluxo atual, as tabelas mais importantes sao:
-
-- `usuarios`: recebe `id`, `nome`, `email`, `tipo_usuario`, `paroquia_id`
-- `paroquias`: precisa ter `id`, `nome`, `cidade`, `codigo_acesso`, `status`
+As outras tabelas listadas em `docs/supabase-model.md` sao parte do modelo futuro e ainda nao sao usadas para persistir as telas demonstrativas.
 
 ## Regras de navegacao
 

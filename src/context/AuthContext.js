@@ -49,21 +49,15 @@ export function AuthProvider({ children }) {
 
     const { data, error } = await supabase
       .from('usuarios')
-      .upsert({
-        id: user.id,
-        nome: user.user_metadata?.nome || user.email || 'Novo usuário',
-        email: user.email,
-        tipo_usuario: user.user_metadata?.tipo_usuario || 'aluno',
-        paroquia_id: null,
-      })
       .select('*, paroquias(nome, cidade, codigo_acesso, status)')
-      .single();
+      .eq('id', user.id)
+      .maybeSingle();
 
     if (error) {
       return null;
     }
 
-    return data;
+    return data || null;
   }
 
   useEffect(() => {

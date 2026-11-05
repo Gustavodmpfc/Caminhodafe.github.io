@@ -11,7 +11,7 @@ import { theme } from '../styles/theme';
 import { getFriendlyAuthError } from '../utils/authErrors';
 
 export default function ParishCodeScreen() {
-  const { signOut, user, profile, refreshProfile } = useAuth();
+  const { signOut, user, refreshProfile } = useAuth();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -31,63 +31,25 @@ export default function ParishCodeScreen() {
     }
 
     setLoading(true);
+    try {
+      const { error: parishError } = await supabase.rpc('vincular_paroquia', {
+        p_codigo: cleanCode,
+      });
 
-    const { data: parish, error: parishError } = await supabase
-      .from('paroquias')
-      .select('id, nome, cidade, codigo_acesso, status')
-      .eq('codigo_acesso', cleanCode)
-      .eq('status', 'ativa')
-      .maybeSingle();
-
-    if (parishError) {
-      setError(getFriendlyAuthError(parishError));
-      setLoading(false);
-      return;
-    }
-
-    if (!parish) {
-      setError('Código de paróquia inválido ou inativo.');
-      setLoading(false);
-      return;
-    }
-
-    const payload = {
-      nome: profile?.nome || user.user_metadata?.nome || user.email,
-      email: profile?.email || user.email,
-      tipo_usuario: profile?.tipo_usuario || 'aluno',
-      paroquia_id: parish.id,
-    };
-
-    const { data: updatedUser, error: updateError } = await supabase
-      .from('usuarios')
-      .update(payload)
-      .eq('id', user.id)
-      .select('*, paroquias(nome, cidade, codigo_acesso, status)')
-      .maybeSingle();
-
-    if (updateError) {
-      setError(getFriendlyAuthError(updateError));
-      setLoading(false);
-      return;
-    }
-
-    if (!updatedUser) {
-      const { error: upsertError } = await supabase
-        .from('usuarios')
-        .upsert({
-          id: user.id,
-          ...payload,
-        });
-
-      if (upsertError) {
-        setError(getFriendlyAuthError(upsertError));
-        setLoading(false);
+      if (parishError) {
+        setError(getFriendlyAuthError(parishError));
         return;
       }
-    }
 
-    await refreshProfile(user.id);
-    setLoading(false);
+      const updatedProfile = await refreshProfile(user.id);
+      if (!updatedProfile) {
+        setError('Paróquia vinculada, mas não foi possível carregar o perfil. Tente entrar novamente.');
+      }
+    } catch (submitError) {
+      setError(getFriendlyAuthError(submitError));
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleLogout() {
@@ -109,7 +71,7 @@ export default function ParishCodeScreen() {
         <AppButton title="Vincular paróquia" icon={KeyRound} loading={loading} onPress={handleCodeSubmit} />
         <AppButton title="Sair da conta" icon={LogOut} variant="secondary" onPress={handleLogout} />
       </View>
-      <InfoCard title="Como funciona" description="O app busca o código na tabela paróquias e salva o paroquia_id no seu usuário." tone="gold">
+      <InfoCard title="Como funciona" description="O servidor valida o código da paróquia e vincula a sua conta com segurança." tone="gold">
         <Text style={styles.note}>Depois disso, alunos entram direto no painel.</Text>
       </InfoCard>
     </ScrollView>

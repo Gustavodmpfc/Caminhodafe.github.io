@@ -1,123 +1,59 @@
-# Configuracao recomendada para cadastro no Supabase
+# Configuracao do Supabase
 
-No app, o usuario e criado com Supabase Auth. Para garantir que a tabela `usuarios` seja preenchida mesmo quando a confirmacao de e-mail estiver ligada, use um trigger no Supabase.
+O app usa o Supabase para autenticar contas, manter o perfil do aluno e vincular uma conta a uma paroquia. Atualmente, aulas, atividades e progresso continuam usando dados locais/de demonstracao.
 
-Abra **SQL Editor** no Supabase e rode:
+## 1. Criar o projeto Supabase
 
-```sql
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  if coalesce(new.raw_user_meta_data->>'nome', '') !~ '[^[:space:]]' then
-    raise exception 'O nome e obrigatorio.';
-  end if;
+1. Crie um projeto no [Supabase](https://supabase.com/dashboard) e aguarde o provisionamento terminar.
+2. Em **Project Settings > API**, copie a **Project URL** e a chave publica **anon** (ou **publishable**). Nunca use `service_role` ou `secret` no front-end.
+3. Atualize `supabaseUrl` e `supabaseAnonKey` em `src/services/supabase.js` com os dois valores do mesmo projeto.
+4. Confirme que a URL abre e que o projeto esta ativo. Ela deve ter o formato `https://<project-ref>.supabase.co`.
 
-  if new.raw_user_meta_data->>'nome' ~ '[0-9]' then
-    raise exception 'O nome nao pode conter numeros.';
-  end if;
+## 2. Criar as tabelas, politicas e funcoes
 
-  insert into public.usuarios (id, nome, email, tipo_usuario)
-  values (
-    new.id,
-    btrim(new.raw_user_meta_data->>'nome'),
-    new.email,
-    coalesce(new.raw_user_meta_data->>'tipo_usuario', 'aluno')
-  )
-  on conflict (id) do update
-  set
-    nome = excluded.nome,
-    email = excluded.email,
-    tipo_usuario = excluded.tipo_usuario;
+Abra **SQL Editor** no projeto novo e execute o conteudo integral de:
 
-  return new;
-end;
-$$;
-
-drop trigger if exists on_auth_user_created on auth.users;
-
-create trigger on_auth_user_created
-after insert on auth.users
-for each row execute procedure public.handle_new_user();
+```text
+supabase/migrations/20261105160000_auth_and_parishes.sql
 ```
 
-## RLS minima para desenvolvimento
+Essa migration cria `usuarios` e `paroquias`, o perfil automatico apos cadastro, politicas RLS para limitar a leitura ao proprio usuario/paroquia e a funcao `vincular_paroquia`, que valida o codigo no banco sem expor a lista de codigos a todos os alunos.
 
-Se Row Level Security estiver ativa em `usuarios`, crie politicas para o usuario ler e editar apenas o proprio perfil:
+Execute-a uma vez em um projeto vazio. Ela nao e uma migration de atualizacao para tabelas preexistentes; se o projeto ja tiver tabelas com esses nomes, confira o esquema antes de rodar.
 
-```sql
-alter table public.usuarios enable row level security;
+## 3. Configurar Auth e confirmacao de e-mail
 
-drop policy if exists "usuarios_select_proprio" on public.usuarios;
-create policy "usuarios_select_proprio"
-on public.usuarios
-for select
-using (auth.uid() = id);
+Em **Authentication > URL Configuration**, configure:
 
-drop policy if exists "usuarios_update_proprio" on public.usuarios;
-create policy "usuarios_update_proprio"
-on public.usuarios
-for update
-using (auth.uid() = id)
-with check (auth.uid() = id);
+- **Site URL**: `https://gustavodmpfc.github.io/Caminhodafe.github.io/`
+- **Redirect URLs**: `https://gustavodmpfc.github.io/Caminhodafe.github.io/**`
 
-drop policy if exists "usuarios_insert_proprio" on public.usuarios;
-create policy "usuarios_insert_proprio"
-on public.usuarios
-for insert
-with check (auth.uid() = id);
-```
+Para desenvolvimento local, adicione tambem a URL que o Expo mostrar no terminal. Em **Authentication > Settings**, configure a senha para exigir pelo menos 6 caracteres. O formulario do app exige ainda letra minuscula e numero.
 
-Para validar codigo da paroquia, o app precisa ler a tabela `paroquias`:
+Se a confirmacao de e-mail estiver habilitada, o cadastro mostra um aviso para verificar a caixa de entrada. O link de confirmacao deve retornar ao site; depois, o aluno entra com o mesmo e-mail e senha. Para um teste inicial, e possivel desativar temporariamente **Authentication > Providers > Email > Confirm email**; nesse caso, proteja o projeto de teste adequadamente.
 
-```sql
-alter table public.paroquias enable row level security;
+## 4. Criar uma paroquia para teste
 
-drop policy if exists "paroquias_select_autenticado" on public.paroquias;
-create policy "paroquias_select_autenticado"
-on public.paroquias
-for select
-to authenticated
-using (status = 'ativa');
-```
-
-## Paroquia inicial para teste
-
-Para testar o fluxo do app, cadastre pelo menos uma paroquia ativa. Exemplo:
+Depois de executar a migration, rode no SQL Editor:
 
 ```sql
 insert into public.paroquias (nome, cidade, codigo_acesso, status)
-values ('Paroquia Demo', 'Sao Paulo', 'FE2026', 'ativa')
-on conflict (codigo_acesso) do update
-set
-  nome = excluded.nome,
-  cidade = excluded.cidade,
-  status = excluded.status;
+values ('Paroquia Demo', 'Sao Paulo', 'FE2026', 'ativa');
 ```
 
-Depois disso, o aluno pode criar conta, fazer login e informar o codigo `FE2026`.
+O aluno cria a conta, entra e informa `FE2026`. O codigo e comparado sem diferenciar maiusculas/minusculas ou espacos nas pontas.
 
-## Confirmacao de e-mail na web e no app mobile
+## Validar o fluxo
 
-Se a confirmacao de e-mail estiver ligada no Supabase, o aluno recebe um e-mail com um link de confirmacao. Depois de confirmar, o Supabase redireciona para a URL configurada em **Authentication > URL Configuration**.
+1. Abra o site e cadastre uma conta com nome sem numeros, e-mail valido e senha que cumpra os requisitos.
+2. Confirme o e-mail, se essa opcao estiver habilitada.
+3. Entre com as mesmas credenciais.
+4. Informe o codigo de paroquia ativo.
+5. Na tabela `usuarios`, confirme que foi criado um perfil cujo `id` corresponde ao usuario em `auth.users` e que `paroquia_id` foi vinculado.
+6. Teste com duas contas para confirmar que cada uma so consegue ler o proprio perfil.
 
-Se essa URL estiver como `http://localhost:3000`, o celular vai mostrar erro de conexao recusada. Isso nao e erro do app mobile; e apenas o navegador tentando abrir um endereco local que nao existe no aparelho.
+Se o endereco `supabaseUrl` retornar erro de DNS, confira se o projeto continua ativo e se copiou a URL atual do mesmo projeto que forneceu a chave publica. A chave `anon` e publica e limitada pelas politicas RLS; nunca publique `service_role`.
 
-Para a publicacao web deste projeto, configure em **Authentication > URL Configuration**:
+## Escopo do backend atual
 
-- **Site URL**: `https://gustavodmpfc.github.io/Caminhodafe.github.io/`
-- **Redirect URLs**: adicione `https://gustavodmpfc.github.io/Caminhodafe.github.io/**`
-
-O cliente web detecta a sessao retornada pelo link de confirmacao. Para desenvolvimento, ha duas opcoes:
-
-1. Desligar temporariamente a confirmacao de e-mail em **Authentication > Providers > Email > Confirm email**. Assim o cadastro ja cria sessao no app e o aluno segue para o codigo da paroquia.
-2. Manter confirmacao ligada e configurar uma URL real em **Site URL** e **Redirect URLs**. Para testar localmente, adicione tambem a URL local exibida pelo Expo entre as Redirect URLs.
-
-Para apresentacao do projeto integrador, a opcao mais simples costuma ser desligar a confirmacao de e-mail durante os testes.
-
-## Regras de senha
-
-O formulario web bloqueia senhas com menos de 6 caracteres, sem letra minuscula ou sem numero. No painel do Supabase, em **Authentication > Settings**, configure a politica de senha para exigir pelo menos 6 caracteres. A validacao da letra minuscula e do numero feita no formulario protege o fluxo desta aplicacao; para impor a mesma regra a outros clientes que chamem o Auth diretamente, implemente tambem a regra no backend.
+Somente autenticacao, perfil e vinculo de paroquia sao persistidos no Supabase nesta versao. A migration nao cria as tabelas futuras de turmas, aulas, atividades, comunicados, pagamentos ou progresso; essas partes da interface ainda usam mocks ou armazenamento local.
