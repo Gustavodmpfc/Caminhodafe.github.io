@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Caminho da Fe",
+    "slug": "caminho-da-fe",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#F7F0E7"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "experiments": {
+      "baseUrl": ""
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {},
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
