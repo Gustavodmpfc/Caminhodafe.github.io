@@ -68,6 +68,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let active = true;
+    let profileLoadTimer;
 
     async function initSession() {
       const { data } = await supabase.auth.getSession();
@@ -82,18 +83,28 @@ export function AuthProvider({ children }) {
 
     initSession();
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!active) return;
+
       setSession(newSession);
-      if (newSession?.user) {
-        await loadProfile(newSession.user);
-      } else {
-        setProfile(null);
-      }
-      setLoading(false);
+
+      clearTimeout(profileLoadTimer);
+      profileLoadTimer = setTimeout(async () => {
+        try {
+          if (newSession?.user) {
+            await loadProfile(newSession.user);
+          } else {
+            setProfile(null);
+          }
+        } finally {
+          if (active) setLoading(false);
+        }
+      }, 0);
     });
 
     return () => {
       active = false;
+      clearTimeout(profileLoadTimer);
       listener.subscription.unsubscribe();
     };
   }, []);
