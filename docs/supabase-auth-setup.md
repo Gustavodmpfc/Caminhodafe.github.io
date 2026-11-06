@@ -57,3 +57,7 @@ Se o endereco `supabaseUrl` retornar erro de DNS, confira se o projeto continua 
 ## Escopo do backend atual
 
 Somente autenticacao, perfil e vinculo de paroquia sao persistidos no Supabase nesta versao. A migration nao cria as tabelas futuras de turmas, aulas, atividades, comunicados, pagamentos ou progresso; essas partes da interface ainda usam mocks ou armazenamento local.
+
+## Login temporario de demonstracao
+
+Enquanto o backend nao estiver configurado, o build do GitHub Pages ativa `EXPO_PUBLIC_ENABLE_DEMO_ADMIN` e aceita `admin@gmail.com` / `admin123`. Esse usuario existe apenas em memoria no navegador e acessa telas com dados simulados. A credencial fica publica no bundle do site e nao pode proteger informacoes. Ao habilitar o Supabase real, remova essa variavel do workflow e publique novamente.

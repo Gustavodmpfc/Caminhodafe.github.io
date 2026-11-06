@@ -5,6 +5,8 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import ParishCodeScreen from '../screens/ParishCodeScreen';
 import StudentDashboardScreen from '../screens/StudentDashboardScreen';
+import CatechistDashboardScreen from '../screens/CatechistDashboardScreen';
+import StudentsScreen from '../screens/StudentsScreen';
 import LessonsScreen from '../screens/LessonsScreen';
 import LessonDetailScreen from '../screens/LessonDetailScreen';
 import QuizScreen from '../screens/QuizScreen';
@@ -86,6 +88,17 @@ function StudentStack() {
   );
 }
 
+function AdminDemoStack() {
+  return (
+    <Stack.Navigator screenOptions={screenOptions}>
+      <Stack.Screen name="AdminDashboard" component={CatechistDashboardScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Students" component={StudentsScreen} options={{ title: 'Alunos' }} />
+      <Stack.Screen name="Announcements" component={AnnouncementsScreen} options={{ title: 'Comunicados' }} />
+      <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'Perfil' }} />
+    </Stack.Navigator>
+  );
+}
+
 export default function AppNavigator() {
   const { loading, isLoggedIn, profile } = useAuth();
 
@@ -95,6 +108,10 @@ export default function AppNavigator() {
 
   if (!isLoggedIn) {
     return <PublicStack />;
+  }
+
+  if (profile?.tipo_usuario === 'admin_geral') {
+    return <AdminDemoStack />;
   }
 
   if (!profile?.paroquia_id) {

@@ -39,6 +39,8 @@ jobs:
 
       - name: Build web app
         run: npm run build:web
+        env:
+          EXPO_PUBLIC_ENABLE_DEMO_ADMIN: 'true'
 
       - name: Upload web artifact
         uses: actions/upload-pages-artifact@v3

@@ -1,18 +1,26 @@
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { Megaphone, UsersRound, UserRound, ListOrdered } from 'lucide-react-native';
+import { LogOut, Megaphone, UsersRound, UserRound, ListOrdered } from 'lucide-react-native';
 import AppButton from '../components/AppButton';
 import InfoCard from '../components/InfoCard';
 import ScreenHeader from '../components/ScreenHeader';
 import { lessons, students } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
 import { commonStyles } from '../styles/commonStyles';
 import { theme } from '../styles/theme';
 
 export default function CatechistDashboardScreen({ navigation }) {
+  const { profile, signOut } = useAuth();
+  const isDemoAdmin = profile?.tipo_usuario === 'admin_geral';
   const average = students.reduce((sum, student) => sum + student.progresso, 0) / students.length;
 
   return (
     <ScrollView style={commonStyles.screen} contentContainerStyle={commonStyles.container}>
-      <ScreenHeader title="Painel do catequista" subtitle="Gerencie turma, alunos, comunicados e ordem das aulas." />
+      <ScreenHeader
+        title={isDemoAdmin ? 'Painel de administrador (teste)' : 'Painel do catequista'}
+        subtitle={isDemoAdmin
+          ? 'Acesso temporário sem banco de dados. As informações exibidas são simuladas.'
+          : 'Gerencie turma, alunos, comunicados e ordem das aulas.'}
+      />
 
       <View style={styles.stats}>
         <InfoCard title={`${students.length}`} description="Alunos vinculados" />
@@ -23,6 +31,9 @@ export default function CatechistDashboardScreen({ navigation }) {
         <AppButton title="Ver alunos" icon={UsersRound} onPress={() => navigation.navigate('Students')} />
         <AppButton title="Comunicados" icon={Megaphone} variant="secondary" onPress={() => navigation.navigate('Announcements')} />
         <AppButton title="Perfil" icon={UserRound} variant="secondary" onPress={() => navigation.navigate('Profile')} />
+        {isDemoAdmin ? (
+          <AppButton title="Sair do modo de teste" icon={LogOut} variant="secondary" onPress={signOut} />
+        ) : null}
       </View>
 
       <InfoCard title="Organização das aulas" description="Estrutura simulada para ordenar a trilha da turma." tone="gold">

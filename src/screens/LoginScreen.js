@@ -12,7 +12,7 @@ import { getFriendlyAuthError } from '../utils/authErrors';
 import { isValidEmail } from '../utils/authValidation';
 
 export default function LoginScreen({ navigation }) {
-  const { loginAsDevStudent, canUseDevLogin, refreshProfile } = useAuth();
+  const { loginAsDevStudent, loginAsDemoAdmin, canUseDevLogin, canUseDemoAdmin, refreshProfile } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,6 +33,15 @@ export default function LoginScreen({ navigation }) {
     }
 
     setLoading(true);
+    if (canUseDemoAdmin) {
+      const loggedIn = loginAsDemoAdmin(cleanEmail, password);
+      setLoading(false);
+      if (!loggedIn) {
+        setError('Credenciais temporárias inválidas. Use os dados de demonstração indicados abaixo.');
+      }
+      return;
+    }
+
     try {
       const { data, error: loginError } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
@@ -84,9 +93,19 @@ export default function LoginScreen({ navigation }) {
             onPress={loginAsDevStudent}
           />
         ) : null}
-        <AppButton title="Criar nova conta" variant="secondary" onPress={() => navigation.navigate('Register')} />
+        {!canUseDemoAdmin ? (
+          <AppButton title="Criar nova conta" variant="secondary" onPress={() => navigation.navigate('Register')} />
+        ) : null}
       </View>
-      <InfoCard title="Acesso do catequizando" description="O app usa Supabase Auth e mantém a sessão do aluno salva no aparelho." />
+      {canUseDemoAdmin ? (
+        <InfoCard
+          title="Modo de teste sem banco"
+          description="Acesso temporário e público para testar as telas. E-mail: admin@gmail.com. Senha: admin123. Os dados são simulados e não são salvos no Supabase."
+          tone="gold"
+        />
+      ) : (
+        <InfoCard title="Acesso do catequizando" description="O app usa Supabase Auth e mantém a sessão do aluno salva no aparelho." />
+      )}
     </ScrollView>
   );
 }

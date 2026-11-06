@@ -3,6 +3,7 @@ import { supabase } from '../services/supabase';
 
 const AuthContext = createContext(null);
 const canUseDevLogin = __DEV__ && process.env.EXPO_PUBLIC_ENABLE_DEV_LOGIN === 'true';
+const canUseDemoAdmin = process.env.EXPO_PUBLIC_ENABLE_DEMO_ADMIN === 'true';
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
@@ -131,6 +132,42 @@ export function AuthProvider({ children }) {
     });
   }
 
+  function loginAsDemoAdmin(email, password) {
+    if (
+      !canUseDemoAdmin
+      || email.trim().toLowerCase() !== 'admin@gmail.com'
+      || password !== 'admin123'
+    ) {
+      return false;
+    }
+
+    const demoUser = {
+      id: 'demo-admin',
+      email: 'admin@gmail.com',
+      user_metadata: {
+        nome: 'Administrador de Teste',
+        tipo_usuario: 'admin_geral',
+      },
+    };
+
+    setDevUser(demoUser);
+    setProfile({
+      id: demoUser.id,
+      nome: demoUser.user_metadata.nome,
+      email: demoUser.email,
+      tipo_usuario: 'admin_geral',
+      paroquia_id: 'demo-parish',
+      paroquias: {
+        nome: 'Paróquia de Demonstração',
+        cidade: 'Ambiente de testes',
+        codigo_acesso: 'DEMO',
+        status: 'ativa',
+      },
+    });
+
+    return true;
+  }
+
   async function signOut() {
     setDevUser(null);
     setProfile(null);
@@ -150,9 +187,11 @@ export function AuthProvider({ children }) {
       loading,
       isLoggedIn: Boolean(activeUser),
       canUseDevLogin,
+      canUseDemoAdmin,
       refreshProfile: loadProfile,
       ensureUserProfile,
       loginAsDevStudent,
+      loginAsDemoAdmin,
       signOut,
       setProfile,
     };

@@ -86,6 +86,15 @@ Reinicie o Expo depois de alterar essa variavel e execute `npx expo start`. Na t
 
 O progresso e as respostas do modo demonstracao ficam salvos no armazenamento local do navegador/aparelho e nao sao sincronizados entre dispositivos.
 
+### Acesso temporario de administrador na web
+
+Enquanto o projeto Supabase correto ainda nao estiver configurado, o GitHub Pages esta compilado com um acesso de demonstracao:
+
+- E-mail: `admin@gmail.com`
+- Senha: `admin123`
+
+Esse login cria somente um usuario em memoria no navegador e abre um painel de demonstracao com dados mockados. Nao cria uma conta Supabase, nao grava dados e perde a sessao ao recarregar a pagina. Como o site e publico, essas credenciais tambem sao publicas: use somente para testes, nunca para dados reais. Para desativar, remova `EXPO_PUBLIC_ENABLE_DEMO_ADMIN: 'true'` da etapa de build em `.github/workflows/deploy-pages.yml` e publique novamente.
+
 Para testar pelo celular:
 
 1. Instale o Expo Go.
