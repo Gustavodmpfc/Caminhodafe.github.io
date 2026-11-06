@@ -88,12 +88,12 @@ O progresso e as respostas do modo demonstracao ficam salvos no armazenamento lo
 
 ### Acesso temporario de administrador na web
 
-Enquanto o projeto Supabase correto ainda nao estiver configurado, o GitHub Pages esta compilado com um acesso de demonstracao:
+Enquanto o projeto Supabase correto ainda nao estiver configurado, o GitHub Pages aceita este acesso temporario para abrir o fluxo normal do app:
 
 - E-mail: `admin@gmail.com`
 - Senha: `admin123`
 
-Esse login cria somente um usuario em memoria no navegador e abre um painel de demonstracao com dados mockados. Nao cria uma conta Supabase, nao grava dados e perde a sessao ao recarregar a pagina. Como o site e publico, essas credenciais tambem sao publicas: use somente para testes, nunca para dados reais. Para desativar, remova `EXPO_PUBLIC_ENABLE_DEMO_ADMIN: 'true'` da etapa de build em `.github/workflows/deploy-pages.yml` e publique novamente.
+Esse login cria somente uma sessao temporaria em memoria no navegador e abre as telas normais do app. Nao cria uma conta Supabase; a sessao desaparece ao recarregar a pagina. Cadastros e logins com outros e-mails continuam usando Supabase Auth. Como o site e publico, as credenciais do atalho tambem sao publicas: use apenas para facilitar o acesso da equipe, nunca para proteger informacoes. Para desativar, remova `EXPO_PUBLIC_ENABLE_DEMO_ADMIN: 'true'` da etapa de build em `.github/workflows/deploy-pages.yml` e publique novamente.
 
 Para testar pelo celular:
 

@@ -60,4 +60,4 @@ Somente autenticacao, perfil e vinculo de paroquia sao persistidos no Supabase n
 
 ## Login temporario de demonstracao
 
-Enquanto o backend nao estiver configurado, o build do GitHub Pages ativa `EXPO_PUBLIC_ENABLE_DEMO_ADMIN` e aceita `admin@gmail.com` / `admin123`. Esse usuario existe apenas em memoria no navegador e acessa telas com dados simulados. A credencial fica publica no bundle do site e nao pode proteger informacoes. Ao habilitar o Supabase real, remova essa variavel do workflow e publique novamente.
+Enquanto o backend nao estiver configurado, o build do GitHub Pages ativa `EXPO_PUBLIC_ENABLE_DEMO_ADMIN` e aceita `admin@gmail.com` / `admin123` para abrir o fluxo normal do app sem Supabase. A sessao existe somente em memoria e nao cria conta no banco; outros e-mails continuam usando Supabase Auth. A credencial fica publica no bundle do site e nao protege informacoes. Ao habilitar o Supabase real, remova essa variavel do workflow e publique novamente.

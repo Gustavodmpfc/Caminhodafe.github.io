@@ -142,11 +142,11 @@ export function AuthProvider({ children }) {
     }
 
     const demoUser = {
-      id: 'demo-admin',
+      id: 'demo-team-member',
       email: 'admin@gmail.com',
       user_metadata: {
-        nome: 'Administrador de Teste',
-        tipo_usuario: 'admin_geral',
+        nome: 'Administrador',
+        tipo_usuario: 'aluno',
       },
     };
 
@@ -155,10 +155,10 @@ export function AuthProvider({ children }) {
       id: demoUser.id,
       nome: demoUser.user_metadata.nome,
       email: demoUser.email,
-      tipo_usuario: 'admin_geral',
+      tipo_usuario: 'aluno',
       paroquia_id: 'demo-parish',
       paroquias: {
-        nome: 'Paróquia de Demonstração',
+        nome: 'Ambiente de acesso da equipe',
         cidade: 'Ambiente de testes',
         codigo_acesso: 'DEMO',
         status: 'ativa',

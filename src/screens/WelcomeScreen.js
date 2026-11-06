@@ -6,7 +6,6 @@ import { commonStyles } from '../styles/commonStyles';
 import { theme } from '../styles/theme';
 
 export default function WelcomeScreen({ navigation }) {
-  const demoAdminEnabled = process.env.EXPO_PUBLIC_ENABLE_DEMO_ADMIN === 'true';
 
   return (
     <ScrollView contentContainerStyle={styles.container} style={commonStyles.screen}>
@@ -28,9 +27,7 @@ export default function WelcomeScreen({ navigation }) {
 
       <View style={styles.actions}>
         <AppButton title="Entrar" icon={LogIn} onPress={() => navigation.navigate('Login')} />
-        {!demoAdminEnabled ? (
-          <AppButton title="Criar conta" icon={UserPlus} variant="secondary" onPress={() => navigation.navigate('Register')} />
-        ) : null}
+        <AppButton title="Criar conta" icon={UserPlus} variant="secondary" onPress={() => navigation.navigate('Register')} />
       </View>
 
       <Text style={styles.footer}>Plataforma de apoio para catequizandos.</Text>

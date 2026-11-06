@@ -32,16 +32,15 @@ export default function LoginScreen({ navigation }) {
       return;
     }
 
-    setLoading(true);
-    if (canUseDemoAdmin) {
+    if (canUseDemoAdmin && cleanEmail === 'admin@gmail.com') {
       const loggedIn = loginAsDemoAdmin(cleanEmail, password);
-      setLoading(false);
       if (!loggedIn) {
-        setError('Credenciais temporárias inválidas. Use os dados de demonstração indicados abaixo.');
+        setError('E-mail ou senha incorretos.');
       }
       return;
     }
 
+    setLoading(true);
     try {
       const { data, error: loginError } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
@@ -93,14 +92,12 @@ export default function LoginScreen({ navigation }) {
             onPress={loginAsDevStudent}
           />
         ) : null}
-        {!canUseDemoAdmin ? (
-          <AppButton title="Criar nova conta" variant="secondary" onPress={() => navigation.navigate('Register')} />
-        ) : null}
+        <AppButton title="Criar nova conta" variant="secondary" onPress={() => navigation.navigate('Register')} />
       </View>
       {canUseDemoAdmin ? (
         <InfoCard
-          title="Modo de teste sem banco"
-          description="Acesso temporário e público para testar as telas. E-mail: admin@gmail.com. Senha: admin123. Os dados são simulados e não são salvos no Supabase."
+          title="Acesso da equipe"
+          description="Acesso temporário ao app: admin@gmail.com / admin123. Outras contas continuam usando o Supabase. Este acesso não autentica nem grava uma conta no banco."
           tone="gold"
         />
       ) : (
