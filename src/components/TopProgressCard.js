@@ -3,26 +3,29 @@ import {
   Text,
   StyleSheet,
 } from 'react-native';
+import useLearningProgress from '../hooks/useLearningProgress';
 
 export default function TopProgressCard({ compact = false }) {
+  const { xp, days, level } = useLearningProgress();
+
   return (
     <View style={[styles.container, compact && styles.compactContainer]}>
       <View style={styles.item}>
-        <Text style={styles.value}>120</Text>
+        <Text style={styles.value}>{xp}</Text>
         <Text style={styles.label}>XP total</Text>
       </View>
 
       <View style={styles.divider} />
 
       <View style={styles.item}>
-        <Text style={styles.value}>5</Text>
-        <Text style={styles.label}>dias</Text>
+        <Text style={styles.value}>{days}</Text>
+        <Text style={styles.label}>{days === 1 ? 'dia' : 'dias'}</Text>
       </View>
 
       <View style={styles.divider} />
 
       <View style={styles.item}>
-        <Text style={styles.value}>2</Text>
+        <Text style={styles.value}>{level}</Text>
         <Text style={styles.label}>nível</Text>
       </View>
     </View>

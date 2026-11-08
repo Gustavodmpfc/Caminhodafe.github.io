@@ -10,8 +10,8 @@ Prototipo em React Native com Expo SDK 54 para o catequizando, com exportacao pa
 - Sessao persistida com AsyncStorage
 - Validacao de codigo da paroquia pela tabela `paroquias`
 - Navegacao protegida por sessao e vinculo com paroquia
-- Dados mockados mantidos para aulas, progresso, comunicados e alunos
-- Progresso e respostas de quiz salvos localmente por usuario
+- Aulas, comunicados e dados de catequistas ainda usam conteudo de demonstracao
+- Respostas de quiz de contas Supabase sao corrigidas no servidor e sincronizadas; o modo demo guarda progresso localmente
 - Player responsivo do YouTube na web e player nativo no aplicativo
 
 ## Como instalar
@@ -72,7 +72,7 @@ Para um roteiro curto de apresentação, instruções de demo e checklist de tes
 3. Entre com o e-mail e a senha cadastrados.
 4. No primeiro acesso, informe o codigo fornecido pela paroquia. Depois do vinculo, o app abre o painel do aluno.
 
-Contas e autenticacao sao gerenciadas pelo Supabase configurado no projeto. O app e voltado ao aluno; o painel do catequista e acessado em uma aplicacao web separada.
+Contas e autenticacao sao gerenciadas pelo Supabase configurado em `.env` localmente e pelas Actions variables (ou secrets legados) na publicacao. O app e voltado ao aluno; o painel do catequista e acessado em uma aplicacao web separada.
 
 ### Acesso de demonstracao local
 
@@ -93,7 +93,7 @@ Enquanto o projeto Supabase correto ainda nao estiver configurado, o GitHub Page
 - E-mail: `admin@gmail.com`
 - Senha: `admin123`
 
-Esse login cria somente uma sessao temporaria em memoria no navegador e abre as telas normais do app. Nao cria uma conta Supabase; a sessao desaparece ao recarregar a pagina. Cadastros e logins com outros e-mails continuam usando Supabase Auth. Como o site e publico, as credenciais do atalho tambem sao publicas: use apenas para facilitar o acesso da equipe, nunca para proteger informacoes. Para desativar, remova `EXPO_PUBLIC_ENABLE_DEMO_ADMIN: 'true'` da etapa de build em `.github/workflows/deploy-pages.yml` e publique novamente.
+Esse login cria somente uma sessao temporaria em memoria no navegador e abre as telas normais do app. Nao cria uma conta Supabase; a sessao desaparece ao recarregar a pagina. Cadastros e logins com outros e-mails usam Supabase Auth quando o backend estiver configurado. Como o site e publico, as credenciais do atalho tambem sao publicas: use apenas para facilitar o acesso da equipe, nunca para proteger informacoes. Para desativar, remova `EXPO_PUBLIC_ENABLE_DEMO_ADMIN: 'true'` da etapa de build em `.github/workflows/deploy-pages.yml` e publique novamente.
 
 Para testar pelo celular:
 
@@ -119,28 +119,29 @@ Para repetir o teste:
 
 ## Configurar Supabase
 
-Edite o arquivo:
+Configure o banco local com Docker Desktop e o Supabase CLI:
 
 ```text
-src/services/supabase.js
+npx supabase start
+npx supabase status -o env
 ```
 
-Coloque a URL e a anon public key do seu projeto:
-
-```js
-const supabaseUrl = 'SUA_URL_DO_SUPABASE';
-const supabaseAnonKey = 'SUA_ANON_PUBLIC_KEY';
-```
-
-Importante: nunca coloque `service_role key` no aplicativo. Use apenas a `anon public key`.
-
-Crie as tabelas e politicas RLS executando a migration abaixo no SQL Editor de um projeto Supabase vazio:
+Copie `API_URL` e `ANON_KEY` exibidos pelo CLI para `.env` na raiz do projeto:
 
 ```text
-supabase/migrations/20261105160000_auth_and_parishes.sql
+EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+EXPO_PUBLIC_SUPABASE_ANON_KEY=valor_ANON_KEY_exibido_pelo_CLI
 ```
 
-Veja [docs/supabase-auth-setup.md](docs/supabase-auth-setup.md) para criar o projeto, configurar confirmacao de e-mail e inserir uma paroquia de teste.
+O `.env.example` pode ser copiado para iniciar esse arquivo. O `.env` e ignorado pelo Git. Nunca use `service_role` ou `secret` no aplicativo.
+
+O CLI aplica automaticamente a migration e o seed local, que cria uma paroquia de teste com codigo `FE2026`. Para um projeto hospedado, configure as mesmas variaveis no `.env` ou como Actions secrets e aplique a migration no Supabase:
+
+```text
+supabase/migrations/20261106150000_auth_and_parishes.sql
+```
+
+Veja [docs/supabase-auth-setup.md](docs/supabase-auth-setup.md) para os passos completos. Sem as variaveis de ambiente, login e cadastro reais exibem uma mensagem de configuracao; o app nao tenta usar um endereco Supabase inexistente fixado no codigo.
 
 ## Escopo atual do Supabase
 
@@ -208,3 +209,11 @@ O ID correto e:
 ```
 
 Se `video_youtube_id` estiver vazio, a aula mostra o placeholder "Video em breve".
+
+## Progresso de aulas e quizzes
+
+- Respostas de quiz de contas Supabase sao corrigidas no servidor e gravadas em `tentativas_atividades`. O gabarito fica em `atividades`, sem leitura direta pelo aplicativo.
+- Uma resposta errada pode ser tentada novamente; acertar conclui a atividade e atualiza o progresso da aula, a jornada, XP e dias de atividade.
+- O login temporario da equipe e o acesso de desenvolvimento guardam o progresso somente no armazenamento local deste navegador/aparelho. Nao sincronizam entre dispositivos.
+- Em um projeto Supabase novo, aplique primeiro `supabase/migrations/20261105160000_auth_and_parishes.sql` e depois `supabase/migrations/20261108000000_learning_progress.sql` antes de testar quizzes com contas reais.
+- O workflow do Pages usa uma URL e chave publica do Supabase por padrao. Para trocar de projeto, defina `EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_ANON_KEY` nas **Actions variables** do repositorio (secrets existentes tambem continuam aceitos). Nunca configure uma chave `service_role` no aplicativo ou no workflow de build web.

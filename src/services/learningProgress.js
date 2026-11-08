@@ -1,99 +1,126 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isSupabaseConfigured, supabase } from './supabase';
 
-const emptyState = () => ({ lessons: {}, activities: {} });
-const storageKey = (userId) => `@caminho-da-fe:learning:${encodeURIComponent(userId || 'anonymous')}`;
+// Contas reais (Supabase Auth) gravam no banco. Contas de demonstração
+// (admin de testes / login de desenvolvimento) não têm usuário no banco,
+// então guardam as tentativas somente neste aparelho/navegador.
 
-export async function getLearningProgress(userId) {
-  const saved = await AsyncStorage.getItem(storageKey(userId));
-  if (!saved) return emptyState();
+const localKey = (userId) => `@caminho-da-fe:tentativas:v2:${encodeURIComponent(userId || 'anonymous')}`;
 
-  const parsed = JSON.parse(saved);
-  if (
-    !parsed ||
-    typeof parsed !== 'object' ||
-    !parsed.lessons ||
-    typeof parsed.lessons !== 'object' ||
-    !parsed.activities ||
-    typeof parsed.activities !== 'object'
-  ) {
-    throw new Error('Os dados de progresso salvos estão inválidos.');
+function friendlyError(error, fallback) {
+  const code = error?.code;
+  const message = String(error?.message || '');
+
+  if (code === 'PGRST202' || code === 'PGRST205' || code === '42P01' || code === '42883') {
+    return 'O banco ainda não tem as tabelas de progresso. Execute a migration 20261108000000_learning_progress.sql no Supabase.';
   }
-
-  for (const progress of Object.values(parsed.lessons)) {
-    if (
-      !progress ||
-      typeof progress !== 'object' ||
-      !Number.isFinite(progress.percentual) ||
-      typeof progress.concluida !== 'boolean'
-    ) {
-      throw new Error('Os dados de progresso das aulas estão inválidos.');
-    }
+  if (/failed to fetch|network/i.test(message)) {
+    return 'Falha de conexão. Verifique sua internet e tente novamente.';
   }
-
-  for (const attempt of Object.values(parsed.activities)) {
-    if (
-      !attempt ||
-      typeof attempt !== 'object' ||
-      !Number.isInteger(attempt.resposta) ||
-      typeof attempt.acertou !== 'boolean'
-    ) {
-      throw new Error('Os dados de respostas salvos estão inválidos.');
-    }
+  if (/sess[aã]o n[aã]o encontrada|jwt/i.test(message)) {
+    return 'Sua sessão expirou. Saia e entre novamente.';
   }
-
-  return parsed;
+  return message || fallback;
 }
 
-export async function saveLessonProgress(userId, lessonId, { percentual, concluida = false }) {
-  const state = await getLearningProgress(userId);
-  const current = state.lessons[lessonId] || {};
-  const next = {
-    percentual: Math.max(Number(current.percentual) || 0, Math.min(100, Math.max(0, Number(percentual) || 0))),
-    concluida: Boolean(current.concluida || concluida),
+function normalizeAttempt(row) {
+  return {
+    atividade_id: String(row.atividade_id),
+    resposta: Number(row.resposta),
+    acertou: Boolean(row.acertou),
+    criado_em: row.criado_em || new Date().toISOString(),
   };
-
-  const updated = {
-    ...state,
-    lessons: { ...state.lessons, [lessonId]: next },
-  };
-  await AsyncStorage.setItem(storageKey(userId), JSON.stringify(updated));
-  return { state: updated, progress: next };
 }
 
-export async function saveActivityAnswer(userId, activity, answerIndex) {
+async function readLocal(userId) {
+  const saved = await AsyncStorage.getItem(localKey(userId));
+  if (!saved) return [];
+
+  let parsed;
+  try {
+    parsed = JSON.parse(saved);
+  } catch {
+    throw new Error('Os dados de progresso salvos neste aparelho estão inválidos.');
+  }
+  if (!Array.isArray(parsed)) {
+    throw new Error('Os dados de progresso salvos neste aparelho estão inválidos.');
+  }
+  return parsed
+    .filter((row) => row && typeof row.atividade_id === 'string' && Number.isInteger(row.resposta))
+    .map(normalizeAttempt);
+}
+
+export async function loadAttempts({ userId, remote }) {
+  if (!remote) return readLocal(userId);
+
+  if (!isSupabaseConfigured) throw new Error('Banco não configurado.');
+
+  const { data, error } = await supabase
+    .from('tentativas_atividades')
+    .select('atividade_id, resposta, acertou, criado_em')
+    .eq('usuario_id', userId)
+    .order('criado_em', { ascending: true });
+
+  if (error) throw new Error(friendlyError(error, 'Não foi possível carregar seu progresso.'));
+  return (data || []).map(normalizeAttempt);
+}
+
+function validateAnswer(activity, answerIndex) {
   if (
     !activity?.id ||
     !activity.aula_id ||
     !Array.isArray(activity.alternativas) ||
-    !Number.isInteger(activity.resposta_correta) ||
-    activity.resposta_correta < 0 ||
-    activity.resposta_correta >= activity.alternativas.length ||
     !Number.isInteger(answerIndex) ||
     answerIndex < 0 ||
     answerIndex >= activity.alternativas.length
   ) {
     throw new Error('Não foi possível registrar esta resposta.');
   }
+}
 
-  const state = await getLearningProgress(userId);
-  const previous = state.activities[activity.id];
-  if (previous) return { state, attempt: previous };
+// Envia a resposta. No modo remoto quem corrige é o servidor (função
+// registrar_tentativa); no modo local a correção usa o gabarito do app.
+// Retorna { acertou, jaConcluida, attempt } — `attempt` é null quando nada novo foi gravado.
+export async function submitAttempt({ userId, remote, activity, answerIndex }) {
+  validateAnswer(activity, answerIndex);
 
-  const attempt = {
+  if (remote) {
+    const { data, error } = await supabase.rpc('registrar_tentativa', {
+      p_atividade_id: activity.id,
+      p_resposta: answerIndex,
+    });
+    if (error) throw new Error(friendlyError(error, 'Não foi possível registrar sua resposta.'));
+
+    const acertou = Boolean(data?.acertou);
+    if (data?.ja_concluida) return { acertou: true, jaConcluida: true, attempt: null };
+
+    return {
+      acertou,
+      jaConcluida: false,
+      attempt: normalizeAttempt({
+        atividade_id: activity.id,
+        resposta: answerIndex,
+        acertou,
+        criado_em: data?.criado_em,
+      }),
+    };
+  }
+
+  if (!Number.isInteger(activity.resposta_correta)) {
+    throw new Error('Não foi possível registrar esta resposta.');
+  }
+
+  const attempts = await readLocal(userId);
+  if (attempts.some((item) => item.atividade_id === activity.id && item.acertou)) {
+    return { acertou: true, jaConcluida: true, attempt: null };
+  }
+
+  const attempt = normalizeAttempt({
+    atividade_id: activity.id,
     resposta: answerIndex,
     acertou: answerIndex === activity.resposta_correta,
-  };
-  const currentProgress = state.lessons[activity.aula_id] || {};
-  const nextProgress = {
-    percentual: Math.max(Number(currentProgress.percentual) || 0, 80),
-    concluida: Boolean(currentProgress.concluida),
-  };
-  const updated = {
-    ...state,
-    lessons: { ...state.lessons, [activity.aula_id]: nextProgress },
-    activities: { ...state.activities, [activity.id]: attempt },
-  };
-
-  await AsyncStorage.setItem(storageKey(userId), JSON.stringify(updated));
-  return { state: updated, attempt };
+    criado_em: new Date().toISOString(),
+  });
+  await AsyncStorage.setItem(localKey(userId), JSON.stringify([...attempts, attempt]));
+  return { acertou: attempt.acertou, jaConcluida: false, attempt };
 }

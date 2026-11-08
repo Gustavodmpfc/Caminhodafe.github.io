@@ -186,6 +186,7 @@ export function AuthProvider({ children }) {
       profile,
       loading,
       isLoggedIn: Boolean(activeUser),
+      isRemoteUser: Boolean(session?.user) && !devUser,
       canUseDevLogin,
       canUseDemoAdmin,
       refreshProfile: loadProfile,

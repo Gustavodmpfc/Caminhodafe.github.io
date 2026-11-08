@@ -1,33 +1,18 @@
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
-import { CircleHelp, CheckCircle2 } from 'lucide-react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { CircleHelp } from 'lucide-react-native';
 import AppButton from '../components/AppButton';
 import InfoCard from '../components/InfoCard';
+import ProgressBar from '../components/ProgressBar';
 import ScreenHeader from '../components/ScreenHeader';
 import YoutubePlayerComponent from '../components/YoutubePlayerComponent';
-import { activities } from '../data/mockData';
 import useLearningProgress from '../hooks/useLearningProgress';
+import { formatPercent } from '../utils/formatters';
 import { commonStyles } from '../styles/commonStyles';
 import { theme } from '../styles/theme';
 
 export default function LessonDetailScreen({ route, navigation }) {
-  const { lessons, loading, error, updateLessonProgress } = useLearningProgress();
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
+  const { lessons, loading, error } = useLearningProgress();
   const lesson = lessons.find((item) => item.id === route.params?.lessonId);
-
-  async function handleMarkAsStudied() {
-    setSaving(true);
-    setSaveError('');
-
-    try {
-      await updateLessonProgress(lesson.id, { percentual: 100, concluida: true });
-    } catch (saveError) {
-      setSaveError(saveError instanceof Error ? saveError.message : 'Não foi possível salvar seu progresso.');
-    } finally {
-      setSaving(false);
-    }
-  }
 
   if (!lesson) {
     return (
@@ -39,7 +24,22 @@ export default function LessonDetailScreen({ route, navigation }) {
     );
   }
 
-  const hasQuiz = activities.some((activity) => activity.aula_id === lesson.id);
+  if (lesson.status === 'locked') {
+    return (
+      <ScrollView style={commonStyles.screen} contentContainerStyle={commonStyles.container}>
+        <ScreenHeader title={lesson.titulo} subtitle={lesson.modulo} />
+        <InfoCard
+          title={lesson.disponivel ? 'Aula bloqueada' : 'Aula em breve'}
+          description={
+            lesson.disponivel
+              ? 'Conclua o quiz da aula anterior para liberar esta aula.'
+              : 'O conteúdo desta aula ainda está sendo preparado.'
+          }
+        />
+        <AppButton title="Voltar às aulas" onPress={() => navigation.goBack()} />
+      </ScrollView>
+    );
+  }
 
   return (
     <ScrollView style={commonStyles.screen} contentContainerStyle={commonStyles.container}>
@@ -51,21 +51,28 @@ export default function LessonDetailScreen({ route, navigation }) {
           Reflita sobre o tema, anote suas dúvidas e converse com seu catequista no próximo encontro.
         </Text>
       </InfoCard>
-      {hasQuiz ? (
-        <AppButton title="Responder quiz" icon={CircleHelp} onPress={() => navigation.navigate('Quiz', { lessonId: lesson.id })} />
+      <InfoCard
+        title={lesson.concluida ? 'Aula concluída' : 'Seu progresso nesta aula'}
+        description={
+          lesson.concluida
+            ? 'Você acertou o quiz desta aula. Parabéns!'
+            : 'A aula é concluída quando você acerta o quiz.'
+        }
+      >
+        <Text style={styles.percent}>{formatPercent(lesson.percentual)}</Text>
+        <ProgressBar value={lesson.percentual} />
+      </InfoCard>
+      {lesson.disponivel ? (
+        <AppButton
+          title={lesson.concluida ? 'Rever quiz' : 'Responder quiz'}
+          icon={CircleHelp}
+          disabled={loading}
+          onPress={() => navigation.navigate('Quiz', { lessonId: lesson.id })}
+        />
       ) : (
         <InfoCard title="Quiz em preparação" description="Esta aula ainda não tem atividade cadastrada." />
       )}
-      <Text style={styles.space} />
-      {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
-      <AppButton
-        title={lesson.concluida ? 'Aula estudada' : 'Marcar como estudada'}
-        icon={CheckCircle2}
-        variant="secondary"
-        loading={saving}
-        disabled={lesson.concluida || saving || loading}
-        onPress={handleMarkAsStudied}
-      />
+      <View style={styles.space} />
     </ScrollView>
   );
 }
@@ -77,13 +84,13 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginTop: theme.spacing.sm,
   },
+  percent: {
+    color: theme.colors.primaryDark,
+    fontSize: 16,
+    fontWeight: '800',
+    marginVertical: theme.spacing.sm,
+  },
   space: {
     height: theme.spacing.sm,
-  },
-  error: {
-    color: theme.colors.danger,
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: theme.spacing.sm,
   },
 });

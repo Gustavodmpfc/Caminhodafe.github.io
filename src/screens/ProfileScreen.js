@@ -19,23 +19,24 @@ import {
   UsersRound,
   Wine,
 } from 'lucide-react-native';
-import { currentUser } from '../data/mockData';
+import InfoCard from '../components/InfoCard';
 import { useAuth } from '../context/AuthContext';
+import useLearningProgress from '../hooks/useLearningProgress';
 import { getInitials } from '../utils/formatters';
 import { theme } from '../styles/theme';
 
 const serifFont = Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' });
 
-const journeyItems = [
-  { title: 'Boas-vindas', progress: 100, status: 'unlocked', icon: Hand },
-  { title: 'Orações', progress: 75, status: 'unlocked', icon: HandHelping },
-  { title: 'Bíblia', progress: 60, status: 'progress', icon: BookOpen },
-  { title: 'Missa', progress: 40, status: 'progress', icon: Wine },
-  { title: 'Mandamentos', progress: 0, status: 'locked', icon: BookOpen },
-  { title: 'Sacramentos', progress: 0, status: 'locked', icon: CrossIcon },
-  { title: 'Comunidade', progress: 0, status: 'locked', icon: UsersRound },
-  { title: 'Presença', progress: 0, status: 'soon', icon: HandHeart },
-];
+const trackIcons = {
+  'boas-vindas': Hand,
+  oracoes: HandHelping,
+  biblia: BookOpen,
+  missa: Wine,
+  mandamentos: BookOpen,
+  sacramentos: CrossIcon,
+  comunidade: UsersRound,
+  presenca: HandHeart,
+};
 
 const statusMeta = {
   unlocked: {
@@ -110,7 +111,7 @@ function StatusDot({ status }) {
 
 function JourneyCard({ item }) {
   const meta = statusMeta[item.status];
-  const Icon = item.icon;
+  const Icon = trackIcons[item.id] || BookOpen;
   const StatusIcon = meta.Icon;
   const isLocked = item.status === 'locked' || item.status === 'soon';
 
@@ -136,10 +137,13 @@ function JourneyCard({ item }) {
   );
 }
 
-export default function ProfileScreen() {
-  const { user, profile } = useAuth();
-  const name = profile?.nome || user?.user_metadata?.nome || currentUser.nome;
-  const parish = profile?.paroquias?.nome || currentUser.paroquia || 'Igreja Santa Cruz';
+export default function ProfileScreen({ navigation }) {
+  const { user, profile, profileError } = useAuth();
+  const { overall, days, tracks, startedTracks, error: progressError } = useLearningProgress();
+  const overallPercent = Math.round(overall);
+  const name = profile?.nome || user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Aluno';
+  const email = profile?.email || user?.email || '';
+  const parish = profile?.paroquias?.nome || 'Paróquia não vinculada';
   const initials = getInitials(name);
 
   function handleEditProfile() {
@@ -169,15 +173,40 @@ export default function ProfileScreen() {
             <Text style={styles.parish} numberOfLines={1}>
               {parish}
             </Text>
+            <Text style={styles.email} numberOfLines={1}>
+              {email}
+            </Text>
             <View style={styles.idBadge}>
-              <Text style={styles.idText}>ID 0345</Text>
+              <Text style={styles.idText}>ID {user?.id?.slice(0, 8) || 'demo'}</Text>
             </View>
+            {!profile?.paroquia_id ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => navigation.navigate('ParishCode')}
+                style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}
+              >
+                <Church size={17} color="#F8E6B4" strokeWidth={2.1} />
+                <Text style={styles.editText}>Vincular paróquia</Text>
+              </Pressable>
+            ) : null}
             <Pressable accessibilityRole="button" onPress={handleEditProfile} style={({ pressed }) => [styles.editButton, pressed && styles.pressed]}>
               <Edit3 size={17} color="#F8E6B4" strokeWidth={2.1} />
               <Text style={styles.editText}>Editar perfil</Text>
             </Pressable>
           </View>
         </LinearGradient>
+
+        {progressError ? (
+          <InfoCard title="Progresso indisponível" description={progressError} tone="gold" />
+        ) : null}
+
+        {profileError ? (
+          <InfoCard
+            title="Dados da conta"
+            description={`${profileError} O nome e o e-mail exibidos acima vêm do cadastro de autenticação.`}
+            tone="gold"
+          />
+        ) : null}
 
         <View style={styles.constancyCard}>
           <View style={styles.constancyIcon}>
@@ -190,8 +219,8 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.divider} />
           <View style={styles.presence}>
-            <Text style={styles.presenceNumber}>5</Text>
-            <Text style={styles.presenceText}>dias de{'\n'}presença</Text>
+            <Text style={styles.presenceNumber}>{days}</Text>
+            <Text style={styles.presenceText}>{days === 1 ? 'dia de' : 'dias de'}{'\n'}atividade</Text>
           </View>
         </View>
 
@@ -206,8 +235,8 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.journeyGrid}>
-          {journeyItems.map((item) => (
-            <JourneyCard key={item.title} item={item} />
+          {tracks.map((item) => (
+            <JourneyCard key={item.id} item={item} />
           ))}
         </View>
 
@@ -224,16 +253,16 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.summaryCopy}>
               <Text style={styles.summaryTitle}>Jornada catequética</Text>
-              <Text style={styles.summarySubtitle}>4 de 8 trilhas iniciadas</Text>
+              <Text style={styles.summarySubtitle}>{startedTracks} de {tracks.length} trilhas iniciadas</Text>
             </View>
             <View style={styles.summaryTrophy}>
               <Trophy size={36} color="#D8A31C" strokeWidth={1.8} />
             </View>
           </View>
           <View style={styles.summaryProgressRow}>
-            <Text style={styles.summaryPercent}>63%</Text>
+            <Text style={styles.summaryPercent}>{overallPercent}%</Text>
             <View style={styles.summaryTrackWrap}>
-              <ProgressTrack value={63} color={theme.colors.primaryDark} />
+              <ProgressTrack value={overallPercent} color={theme.colors.primaryDark} />
             </View>
           </View>
           <View style={styles.nextDivider} />
@@ -242,8 +271,10 @@ export default function ProfileScreen() {
               <Sprout size={18} color="#D8A31C" strokeWidth={2.4} />
             </View>
             <Text style={styles.nextText}>
-              <Text style={styles.nextStrong}>Próxima conquista:</Text> complete mais 2 aulas para desbloquear{' '}
-              <Text style={styles.nextStrong}>Mandamentos.</Text>
+              <Text style={styles.nextStrong}>Próxima conquista:</Text>{' '}
+              {overallPercent >= 100
+                ? 'você concluiu todas as aulas disponíveis. Novas aulas virão em breve!'
+                : 'acerte o quiz da próxima aula para avançar na sua jornada.'}
             </Text>
           </View>
         </View>
@@ -336,6 +367,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 24,
     marginTop: 4,
+  },
+  email: {
+    color: '#F4F1E8',
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 2,
   },
   idBadge: {
     alignSelf: 'flex-start',

@@ -1,63 +1,87 @@
 # Configuracao do Supabase
 
-O app usa o Supabase para autenticar contas, manter o perfil do aluno e vincular uma conta a uma paroquia. Atualmente, aulas, atividades e progresso continuam usando dados locais/de demonstracao.
+O Supabase persiste autenticacao, perfil, vinculo de paroquia e respostas dos quizzes de contas reais. Aulas, videos e comunicados ainda usam dados locais/de demonstracao. Contas temporarias de demonstracao salvam o progresso apenas neste navegador/aparelho.
 
-## 1. Criar o projeto Supabase
+## Executar o backend local
 
-1. Crie um projeto no [Supabase](https://supabase.com/dashboard) e aguarde o provisionamento terminar.
-2. Em **Project Settings > API**, copie a **Project URL** e a chave publica **anon** (ou **publishable**). Nunca use `service_role` ou `secret` no front-end.
-3. Atualize `supabaseUrl` e `supabaseAnonKey` em `src/services/supabase.js` com os dois valores do mesmo projeto.
-4. Confirme que a URL abre e que o projeto esta ativo. Ela deve ter o formato `https://<project-ref>.supabase.co`.
+Requisitos: Docker Desktop iniciado e Node.js instalado. Na raiz do projeto:
 
-## 2. Criar as tabelas, politicas e funcoes
-
-Abra **SQL Editor** no projeto novo e execute o conteudo integral de:
-
-```text
-supabase/migrations/20261105160000_auth_and_parishes.sql
+```powershell
+npx supabase start
+npx supabase status -o env
 ```
 
-Essa migration cria `usuarios` e `paroquias`, o perfil automatico apos cadastro, politicas RLS para limitar a leitura ao proprio usuario/paroquia e a funcao `vincular_paroquia`, que valida o codigo no banco sem expor a lista de codigos a todos os alunos.
+O primeiro comando inicia o banco e os servicos locais, aplica as migrations em `supabase/migrations/` e inclui uma paroquia de teste com codigo `FE2026`. Copie os valores `API_URL` e `ANON_KEY` exibidos pelo segundo comando para um arquivo `.env` na raiz:
 
-Execute-a uma vez em um projeto vazio. Ela nao e uma migration de atualizacao para tabelas preexistentes; se o projeto ja tiver tabelas com esses nomes, confira o esquema antes de rodar.
+```text
+EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+EXPO_PUBLIC_SUPABASE_ANON_KEY=valor_ANON_KEY_exibido_pelo_CLI
+```
 
-## 3. Configurar Auth e confirmacao de e-mail
+Tambem e possivel iniciar copiando `.env.example` para `.env` e substituindo a chave de exemplo. Reinicie o Expo depois de alterar as variaveis:
 
-Em **Authentication > URL Configuration**, configure:
+```powershell
+npx expo start --web
+```
 
-- **Site URL**: `https://gustavodmpfc.github.io/Caminhodafe.github.io/`
-- **Redirect URLs**: `https://gustavodmpfc.github.io/Caminhodafe.github.io/**`
+Para testar em um emulador Android, use `http://10.0.2.2:54321` como URL da API; em um aparelho fisico, use o IP local do computador e permita as portas do Supabase no firewall. O endereco `127.0.0.1` funciona para web no proprio computador.
 
-Para desenvolvimento local, adicione tambem a URL que o Expo mostrar no terminal. Em **Authentication > Settings**, configure a senha para exigir pelo menos 6 caracteres. O formulario do app exige ainda letra minuscula e numero.
+O `.env` esta ignorado pelo Git; nao inclua chaves ou credenciais nele em commits. Para confirmar o esquema local:
 
-Se a confirmacao de e-mail estiver habilitada, o cadastro mostra um aviso para verificar a caixa de entrada. O link de confirmacao deve retornar ao site; depois, o aluno entra com o mesmo e-mail e senha. Para um teste inicial, e possivel desativar temporariamente **Authentication > Providers > Email > Confirm email**; nesse caso, proteja o projeto de teste adequadamente.
+```powershell
+npx supabase db lint
+npx supabase status
+```
 
-## 4. Criar uma paroquia para teste
+`npx supabase db reset` reaplica as migrations e o seed, mas apaga os dados do banco **local**. Nao execute contra um banco que contenha dados que deseja manter.
 
-Depois de executar a migration, rode no SQL Editor:
+## Usar um projeto Supabase hospedado
+
+1. Crie ou selecione um projeto em [Supabase Dashboard](https://supabase.com/dashboard).
+2. Em **Project Settings > API**, copie a Project URL e a chave publica `anon`/publishable do mesmo projeto. Nunca use `service_role` ou `secret` no aplicativo.
+3. Configure `EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_ANON_KEY` no `.env` local. O workflow do Pages inclui uma URL e uma chave publica padrao; para usar outro projeto, sobrescreva-as em **Settings > Secrets and variables > Actions > Variables** do repositorio. Secrets ja configurados tambem continuam sendo aceitos.
+4. Aplique `supabase/migrations/20261105160000_auth_and_parishes.sql` uma vez pelo SQL Editor do Dashboard, ou publique as migrations com o Supabase CLI vinculado ao projeto correto.
+5. Aplique tambem `supabase/migrations/20261108000000_learning_progress.sql` no mesmo projeto para habilitar o progresso dos quizzes. Essa migration cria o gabarito no banco e a funcao que registra e corrige respostas no servidor.
+6. Se desejar um codigo de teste no projeto hospedado, execute no SQL Editor:
 
 ```sql
 insert into public.paroquias (nome, cidade, codigo_acesso, status)
 values ('Paroquia Demo', 'Sao Paulo', 'FE2026', 'ativa');
 ```
 
-O aluno cria a conta, entra e informa `FE2026`. O codigo e comparado sem diferenciar maiusculas/minusculas ou espacos nas pontas.
+A migration foi escrita para um projeto Supabase vazio. Antes de aplica-la em um projeto com tabelas `usuarios` ou `paroquias`, compare o esquema e faca backup.
+
+## Configurar autenticacao hospedada
+
+Em **Authentication > URL Configuration**, configure:
+
+- **Site URL**: `https://gustavodmpfc.github.io/Caminhodafe.github.io/`
+- **Redirect URLs**: `https://gustavodmpfc.github.io/Caminhodafe.github.io/**`
+
+Para desenvolvimento, adicione a URL local apresentada pelo Expo. O projeto local permite cadastro sem confirmacao de e-mail; no projeto hospedado, escolha a politica de confirmacao em **Authentication > Providers > Email**. O formulario exige senha com ao menos seis caracteres, letra minuscula e numero.
+
+O workflow do GitHub Pages injeta a URL e a chave publica do projeto no bundle web. A chave `anon`/publishable e visivel por definicao no navegador; a protecao dos dados depende de RLS. Nunca use `service_role` ou chaves `secret` no frontend nem nas variaveis de build.
+
+## O que a migration cria
+
+- `public.usuarios`: perfil vinculado a `auth.users`; um trigger cria automaticamente o perfil quando a conta e criada.
+- `public.paroquias`: paróquias e codigos unicos, comparados sem diferenciar maiusculas/minusculas e espacos nas pontas.
+- RLS: o usuario autenticado le somente o proprio perfil e a paroquia vinculada. O app nao recebe permissao para alterar perfil, papeis ou codigos.
+- `public.vincular_paroquia(text)`: funcao autenticada valida o codigo e vincula a paroquia sem permitir enumerar codigos.
+- `public.atividades` e `public.tentativas_atividades`: gabaritos ocultos do cliente e tentativas legiveis apenas pelo proprio aluno. `public.registrar_tentativa(text, integer)` valida e corrige cada resposta no banco.
+- `supabase/seed.sql`: cria a paroquia `FE2026` somente no banco local.
 
 ## Validar o fluxo
 
-1. Abra o site e cadastre uma conta com nome sem numeros, e-mail valido e senha que cumpra os requisitos.
-2. Confirme o e-mail, se essa opcao estiver habilitada.
-3. Entre com as mesmas credenciais.
-4. Informe o codigo de paroquia ativo.
-5. Na tabela `usuarios`, confirme que foi criado um perfil cujo `id` corresponde ao usuario em `auth.users` e que `paroquia_id` foi vinculado.
-6. Teste com duas contas para confirmar que cada uma so consegue ler o proprio perfil.
+1. Inicie o Supabase local, configure `.env` com `API_URL` e `ANON_KEY` mostrados pelo CLI e reinicie o Expo.
+2. Crie uma conta com nome, e-mail e senha validos. O perfil deve aparecer em `usuarios`.
+3. Entre com essa conta e vincule `FE2026`.
+4. Confirme que o perfil mostra o nome e o e-mail do cadastro, que `paroquia_id` foi preenchido em `usuarios` e que o painel do aluno abre.
+5. Responda um quiz, recarregue a pagina e confirme que a resposta e o progresso continuam salvos.
+6. Crie uma segunda conta e confirme que ela nao consegue ler o perfil nem as tentativas da primeira.
 
-Se o endereco `supabaseUrl` retornar erro de DNS, confira se o projeto continua ativo e se copiou a URL atual do mesmo projeto que forneceu a chave publica. A chave `anon` e publica e limitada pelas politicas RLS; nunca publique `service_role`.
+Se as chamadas falharem, confira `npx supabase status`, as variaveis do `.env`, a migration aplicada e a saida do Expo. Nao use a chave `service_role` no aplicativo.
 
-## Escopo do backend atual
+## Escopo
 
-Somente autenticacao, perfil e vinculo de paroquia sao persistidos no Supabase nesta versao. A migration nao cria as tabelas futuras de turmas, aulas, atividades, comunicados, pagamentos ou progresso; essas partes da interface ainda usam mocks ou armazenamento local.
-
-## Login temporario de demonstracao
-
-Enquanto o backend nao estiver configurado, o build do GitHub Pages ativa `EXPO_PUBLIC_ENABLE_DEMO_ADMIN` e aceita `admin@gmail.com` / `admin123` para abrir o fluxo normal do app sem Supabase. A sessao existe somente em memoria e nao cria conta no banco; outros e-mails continuam usando Supabase Auth. A credencial fica publica no bundle do site e nao protege informacoes. Ao habilitar o Supabase real, remova essa variavel do workflow e publique novamente.
+Autenticacao, perfil, vinculo de paroquia e respostas dos quizzes de contas reais sao persistidos no Supabase nesta versao. Turmas, catalogo de aulas, videos, comunicados e pagamentos ainda sao demonstrativos ou locais.
