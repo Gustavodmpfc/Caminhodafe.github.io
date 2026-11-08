@@ -82,12 +82,12 @@ export default function TrailLessonCard({ lesson, index, onPress, screenWidth })
           )}
           {isLocked && (
             <View style={styles.lockedBadge}>
-              <Text style={styles.lockedText}>Bloqueado</Text>
+              <Text style={styles.lockedText}>{lesson.disponivel ? 'Bloqueado' : 'Em breve'}</Text>
             </View>
           )}
           {lesson.status === 'current' && (
             <View style={styles.progressContainer}>
-              <View style={[styles.progressFill, { width: `${lesson.percentual || 50}%` }]} />
+              <View style={[styles.progressFill, { width: `${lesson.percentual}%` }]} />
             </View>
           )}
           <Text style={styles.xp}>⭐ {lesson.xp} XP</Text>

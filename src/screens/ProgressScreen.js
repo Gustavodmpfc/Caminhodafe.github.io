@@ -8,15 +8,12 @@ import { commonStyles } from '../styles/commonStyles';
 import { theme } from '../styles/theme';
 
 export default function ProgressScreen() {
-  const { lessons, error } = useLearningProgress();
-  const completed = lessons.filter((lesson) => lesson.concluida).length;
-  const average = lessons.length
-    ? lessons.reduce((sum, lesson) => sum + lesson.percentual, 0) / lessons.length
-    : 0;
+  const { lessons, overall: average, completedCount: completed, availableCount, error } = useLearningProgress();
+  const availableLessons = lessons.filter((lesson) => lesson.disponivel);
 
   return (
     <ScrollView style={commonStyles.screen} contentContainerStyle={commonStyles.container}>
-      <ScreenHeader title="Meu progresso" subtitle={`${completed} de ${lessons.length} aulas concluídas`} />
+      <ScreenHeader title="Meu progresso" subtitle={`${completed} de ${availableCount} aulas concluídas`} />
       {error ? <InfoCard title="Progresso salvo indisponível" description={error} /> : null}
       <InfoCard title="Progresso geral" description={formatPercent(average)}>
         <View style={styles.progressWrap}>
@@ -24,7 +21,7 @@ export default function ProgressScreen() {
         </View>
       </InfoCard>
 
-      {lessons.map((lesson) => (
+      {availableLessons.map((lesson) => (
         <InfoCard key={lesson.id} title={lesson.titulo} description={lesson.modulo}>
           <Text style={styles.percent}>{formatPercent(lesson.percentual)}</Text>
           <ProgressBar value={lesson.percentual} />

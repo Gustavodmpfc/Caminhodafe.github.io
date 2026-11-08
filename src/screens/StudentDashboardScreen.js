@@ -35,13 +35,10 @@ function JesusWatercolorIllustration() {
 
 export default function StudentDashboardScreen({ navigation }) {
   const { profile, user } = useAuth();
-  const { lessons, error } = useLearningProgress();
+  const { lessons, overall: average, error } = useLearningProgress();
   const fullName = profile?.nome || user?.user_metadata?.nome || user?.email || 'Aluno';
   const firstName = fullName.trim().split(' ')[0] || 'Aluno';
-  const average = lessons.length
-    ? lessons.reduce((sum, item) => sum + item.percentual, 0) / lessons.length
-    : 0;
-  const nextLesson = lessons.find((lesson) => !lesson.concluida && lesson.status !== 'locked');
+  const nextLesson = lessons.find((lesson) => lesson.status === 'current');
   const hasRemainingLessons = lessons.some((lesson) => !lesson.concluida);
 
   return (

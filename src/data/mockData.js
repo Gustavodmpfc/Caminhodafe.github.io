@@ -16,6 +16,8 @@ export const parish = {
   status: 'ativa',
 };
 
+// percentual / concluida / status / desbloqueada são recalculados em src/utils/progress.js
+// a partir das respostas do aluno; os valores abaixo são apenas o estado inicial.
 export const lessons = [
   {
     id: 'aula-1',
@@ -25,11 +27,11 @@ export const lessons = [
     ordem: 1,
     modulo: 'Introdução à fé',
     ativo: true,
-    percentual: 100,
-    concluida: true,
+    percentual: 0,
+    concluida: false,
     duracao: '12 min',
     xp: 20,
-    status: 'completed',
+    status: 'locked',
     desbloqueada: true,
   },
   {
@@ -40,11 +42,11 @@ export const lessons = [
     ordem: 2,
     modulo: 'Jesus Cristo',
     ativo: true,
-    percentual: 65,
+    percentual: 0,
     concluida: false,
     duracao: '18 min',
     xp: 20,
-    status: 'current',
+    status: 'locked',
     desbloqueada: true,
   },
   {
@@ -166,7 +168,7 @@ export const activities = [
     id: 'atividade-2',
     aula_id: 'aula-2',
     pergunta: 'Qual atitude aparece com frequência nos ensinamentos de Jesus?',
-    alternativas: ['Indiferença', 'Competição', 'Miséricordia', 'Orgulho'],
+    alternativas: ['Indiferença', 'Competição', 'Misericórdia', 'Orgulho'],
     resposta_correta: 2,
   },
 ];
