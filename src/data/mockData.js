@@ -163,6 +163,7 @@ export const activities = [
       'Fazer tudo sozinho',
     ],
     resposta_correta: 1,
+    explicacao: 'A catequese é um caminho de encontro com Deus que une conhecimento da fé, vida cristã e participação na comunidade. Por isso, responder ao chamado envolve caminhar com fé, amor e responsabilidade.',
   },
   {
     id: 'atividade-2',
@@ -170,6 +171,7 @@ export const activities = [
     pergunta: 'Qual atitude aparece com frequência nos ensinamentos de Jesus?',
     alternativas: ['Indiferença', 'Competição', 'Misericórdia', 'Orgulho'],
     resposta_correta: 2,
+    explicacao: 'A misericórdia aparece muitas vezes na vida e nos ensinamentos de Jesus. Ela nos convida a acolher, perdoar e cuidar do próximo.',
   },
 ];
 
@@ -184,13 +186,16 @@ export const announcements = [
   {
     id: 'c1',
     titulo: 'Encontro presencial',
-    mensagem: 'Nosso próximo encontro será sábado, às 15h, no salão paroquial.',
-    data: '18/05/2026',
+    mensagem: 'Vamos nos reunir para uma tarde de oração, partilha e preparação para o Advento.',
+    data: '25/11/2026',
+    encontroEm: '2026-11-28T15:00:00-03:00',
+    turma: 'Catequese 2026 - Crisma',
   },
   {
     id: 'c2',
     titulo: 'Material da semana',
     mensagem: 'Leia o resumo da aula 2 antes de responder o quiz.',
-    data: '16/05/2026',
+    data: '24/11/2026',
+    turma: null,
   },
 ];

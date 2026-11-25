@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LogOut, Megaphone, UsersRound, UserRound, ListOrdered } from 'lucide-react-native';
 import AppButton from '../components/AppButton';
 import InfoCard from '../components/InfoCard';
@@ -45,11 +45,6 @@ export default function CatechistDashboardScreen({ navigation }) {
         ))}
       </InfoCard>
 
-      <InfoCard title="Criar comunicado" description="Formulário visual para a próxima integração com Supabase.">
-        <TextInput style={styles.input} placeholder="Título do comunicado" />
-        <TextInput style={[styles.input, styles.textArea]} placeholder="Mensagem para a turma" multiline />
-        <AppButton title="Publicar comunicado simulado" icon={Megaphone} />
-      </InfoCard>
     </ScrollView>
   );
 }
@@ -76,18 +71,5 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     fontWeight: '700',
-  },
-  input: {
-    backgroundColor: theme.colors.surface,
-    borderColor: theme.colors.border,
-    borderWidth: 1,
-    borderRadius: theme.radius.md,
-    padding: theme.spacing.md,
-    marginTop: theme.spacing.sm,
-    fontSize: 15,
-  },
-  textArea: {
-    minHeight: 96,
-    textAlignVertical: 'top',
   },
 });
