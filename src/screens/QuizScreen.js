@@ -115,11 +115,7 @@ export default function QuizScreen({ route, navigation }) {
       {solved ? (
         <InfoCard
           title="Resposta correta!"
-          description={
-            lesson?.concluida
-              ? `Aula concluída${lesson.xp ? ` — você ganhou ${lesson.xp} XP` : ''}. Seu progresso foi atualizado.`
-              : 'Seu progresso nesta aula foi atualizado.'
-          }
+          description={`${activity.explicacao || 'Sua resposta está correta. Seu progresso nesta aula foi atualizado.'} ${lesson?.concluida ? `Aula concluída — você ganhou ${lesson.xp} XP.` : ''}`}
           tone="gold"
         />
       ) : null}
@@ -127,7 +123,7 @@ export default function QuizScreen({ route, navigation }) {
       {wrong ? (
         <InfoCard
           title="Continue praticando"
-          description={encouragement[(wrongCount - 1) % encouragement.length]}
+          description={`A resposta correta é ${String.fromCharCode(65 + activity.resposta_correta)}. ${activity.alternativas[activity.resposta_correta]}. ${activity.explicacao || ''} ${encouragement[(wrongCount - 1) % encouragement.length]}`}
         />
       ) : null}
       {submitError ? <Text style={styles.error}>{submitError}</Text> : null}

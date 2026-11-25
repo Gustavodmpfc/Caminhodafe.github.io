@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,12 +16,16 @@ import {
   HandHeart,
   HandHelping,
   Lock,
+  Medal,
+  Star,
+  Sparkles,
   Sprout,
   Trophy,
   UsersRound,
   Wine,
 } from 'lucide-react-native';
 import InfoCard from '../components/InfoCard';
+import { activities as sourceActivities } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
 import useLearningProgress from '../hooks/useLearningProgress';
 import { getInitials } from '../utils/formatters';
@@ -139,12 +145,47 @@ function JourneyCard({ item }) {
 
 export default function ProfileScreen({ navigation }) {
   const { user, profile, profileError } = useAuth();
-  const { overall, days, tracks, startedTracks, error: progressError } = useLearningProgress();
+  const { overall, days, tracks, startedTracks, xp, level, attempts, lessons, error: progressError } = useLearningProgress();
+  const [avatar, setAvatar] = useState('');
   const overallPercent = Math.round(overall);
   const name = profile?.nome || user?.user_metadata?.nome || user?.email?.split('@')[0] || 'Aluno';
   const email = profile?.email || user?.email || '';
   const parish = profile?.paroquias?.nome || 'Paróquia não vinculada';
   const initials = getInitials(name);
+  const userId = user?.id || 'anonymous';
+  const quizCount = new Set(attempts.map((attempt) => attempt.atividade_id)).size;
+  const correctCount = new Set(attempts.filter((attempt) => attempt.acertou).map((attempt) => attempt.atividade_id)).size;
+  const recentActivities = [...attempts]
+    .sort((a, b) => new Date(b.criado_em) - new Date(a.criado_em))
+    .slice(0, 4)
+    .map((attempt) => {
+      const activity = sourceActivities.find((item) => item.id === attempt.atividade_id);
+      const lesson = lessons.find((item) => item.id === activity?.aula_id);
+      return { ...attempt, title: lesson?.titulo || 'Quiz respondido' };
+    });
+  const achievements = [
+    { title: 'Primeiros passos', detail: 'Acertou sua primeira atividade', unlocked: correctCount >= 1, Icon: Sparkles },
+    { title: 'Aprendiz dedicado', detail: 'Respondeu cinco quizzes', unlocked: quizCount >= 5, Icon: Star },
+    { title: 'Trilha completa', detail: 'Concluiu uma trilha catequética', unlocked: tracks.some((track) => track.progress >= 100), Icon: Medal },
+    { title: 'Presença que inspira', detail: 'Participou de encontros presenciais', unlocked: false, Icon: UsersRound },
+  ];
+
+  useEffect(() => {
+    let active = true;
+    AsyncStorage.getItem(`@caminho-da-fe:avatar:${userId}`)
+      .then((savedAvatar) => { if (active && savedAvatar !== null) setAvatar(savedAvatar); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [userId]);
+
+  async function chooseAvatar(value) {
+    setAvatar(value);
+    try {
+      await AsyncStorage.setItem(`@caminho-da-fe:avatar:${userId}`, value);
+    } catch (_error) {
+      // Keep the selected avatar active for this session if storage is unavailable.
+    }
+  }
 
   function handleEditProfile() {
     Alert.alert('Editar perfil', 'A edição do perfil será adicionada em breve.');
@@ -162,7 +203,7 @@ export default function ProfileScreen({ navigation }) {
           <ChurchBackdrop />
           <View style={styles.avatar}>
             <View style={styles.avatarRing}>
-              <Text style={styles.initials}>{initials}</Text>
+              <Text style={styles.initials}>{avatar || initials}</Text>
             </View>
           </View>
 
@@ -196,6 +237,15 @@ export default function ProfileScreen({ navigation }) {
           </View>
         </LinearGradient>
 
+        <View style={styles.avatarPicker}>
+          <Text style={styles.avatarLabel}>Seu avatar</Text>
+          {['🌿', '🕊️', '⭐', '📖', ''].map((value, index) => (
+            <Pressable key={index} accessibilityRole="button" accessibilityLabel={value || 'Usar iniciais'} onPress={() => chooseAvatar(value)} style={[styles.avatarChoice, avatar === value && styles.avatarChoiceSelected]}>
+              <Text style={styles.avatarChoiceText}>{value || initials}</Text>
+            </Pressable>
+          ))}
+        </View>
+
         {progressError ? (
           <InfoCard title="Progresso indisponível" description={progressError} tone="gold" />
         ) : null}
@@ -222,6 +272,42 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.presenceNumber}>{days}</Text>
             <Text style={styles.presenceText}>{days === 1 ? 'dia de' : 'dias de'}{'\n'}atividade</Text>
           </View>
+        </View>
+
+        <View style={styles.levelCard}>
+          <View style={styles.levelIcon}><Trophy size={25} color="#D8A31C" /></View>
+          <View style={styles.levelCopy}>
+            <Text style={styles.levelTitle}>Nível {level} · Caminhante da fé</Text>
+            <Text style={styles.levelSubtitle}>{xp} XP acumulados · {100 - (xp % 100)} XP para o próximo nível</Text>
+            <ProgressTrack value={xp % 100} color="#D8A31C" />
+          </View>
+        </View>
+
+        <Text style={styles.sectionTitle}>Conquistas</Text>
+        <View style={styles.achievementGrid}>
+          {achievements.map(({ title, detail, unlocked, Icon }) => (
+            <View key={title} style={[styles.achievementCard, !unlocked && styles.achievementLocked]}>
+              <Icon size={24} color={unlocked ? '#B98712' : '#A7A7A1'} />
+              <View style={styles.achievementCopy}>
+                <Text style={styles.achievementTitle}>{title}</Text>
+                <Text style={styles.achievementDetail}>{unlocked ? detail : `${detail} · Bloqueada`}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <Text style={styles.sectionTitle}>Atividade recente</Text>
+        <View style={styles.historyCard}>
+          {recentActivities.length ? recentActivities.map((attempt, index) => (
+            <View key={`${attempt.atividade_id}-${attempt.criado_em}-${index}`} style={styles.historyRow}>
+              <View style={[styles.historyIcon, attempt.acertou && styles.historyIconSuccess]}><Check size={17} color={attempt.acertou ? '#2F7B4B' : '#A97811'} /></View>
+              <View style={styles.historyCopy}>
+                <Text style={styles.historyTitle} numberOfLines={1}>{attempt.title}</Text>
+                <Text style={styles.historyDate}>{attempt.criado_em ? new Date(attempt.criado_em).toLocaleDateString('pt-BR') : 'Atividade registrada'}</Text>
+              </View>
+              <Text style={styles.historyResult}>{attempt.acertou ? 'Concluído' : 'Revisar'}</Text>
+            </View>
+          )) : <Text style={styles.emptyHistory}>Suas atividades aparecerão aqui quando você responder aos quizzes.</Text>}
         </View>
 
         <View style={styles.sectionHeader}>
@@ -284,6 +370,31 @@ export default function ProfileScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  avatarPicker: { alignItems: 'center', flexDirection: 'row', gap: 8, marginTop: 10 },
+  avatarLabel: { color: theme.colors.muted, flex: 1, fontSize: 13, fontWeight: '700' },
+  avatarChoice: { alignItems: 'center', backgroundColor: '#FFFDF8', borderColor: theme.colors.border, borderRadius: 18, borderWidth: 1, height: 36, justifyContent: 'center', minWidth: 36, paddingHorizontal: 5 },
+  avatarChoiceSelected: { backgroundColor: '#FFF4D9', borderColor: '#D8A31C' },
+  avatarChoiceText: { color: theme.colors.text, fontSize: 18, fontWeight: '700' },
+  levelCard: { alignItems: 'center', backgroundColor: '#FFFDF8', borderColor: theme.colors.border, borderRadius: 18, borderWidth: 1, flexDirection: 'row', gap: 12, marginTop: 18, padding: 14 },
+  levelIcon: { alignItems: 'center', backgroundColor: '#FFF4D9', borderRadius: 25, height: 50, justifyContent: 'center', width: 50 },
+  levelCopy: { flex: 1, gap: 7 },
+  levelTitle: { color: theme.colors.text, fontSize: 16, fontWeight: '900' },
+  levelSubtitle: { color: theme.colors.muted, fontSize: 13 },
+  achievementGrid: { gap: 9, marginBottom: 18, marginTop: 10 },
+  achievementCard: { alignItems: 'center', backgroundColor: '#FFFDF8', borderColor: '#EADCB8', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 12, minHeight: 62, padding: 12 },
+  achievementLocked: { backgroundColor: '#F7F7F5', borderColor: '#E2E0DA' },
+  achievementCopy: { flex: 1 },
+  achievementTitle: { color: theme.colors.text, fontSize: 15, fontWeight: '800' },
+  achievementDetail: { color: theme.colors.muted, fontSize: 12, marginTop: 2 },
+  historyCard: { backgroundColor: '#FFFDF8', borderColor: theme.colors.border, borderRadius: 16, borderWidth: 1, marginBottom: 18, marginTop: 10, paddingHorizontal: 12 },
+  historyRow: { alignItems: 'center', borderBottomColor: '#EEEAE2', borderBottomWidth: 1, flexDirection: 'row', gap: 10, minHeight: 64 },
+  historyIcon: { alignItems: 'center', backgroundColor: '#FFF4D9', borderRadius: 17, height: 34, justifyContent: 'center', width: 34 },
+  historyIconSuccess: { backgroundColor: '#EEF8EF' },
+  historyCopy: { flex: 1, minWidth: 0 },
+  historyTitle: { color: theme.colors.text, fontSize: 14, fontWeight: '700' },
+  historyDate: { color: theme.colors.muted, fontSize: 12, marginTop: 3 },
+  historyResult: { color: theme.colors.primaryDark, fontSize: 12, fontWeight: '800' },
+  emptyHistory: { color: theme.colors.muted, fontSize: 14, paddingVertical: 18, textAlign: 'center' },
   safeArea: {
     flex: 1,
     backgroundColor: theme.colors.glow,
